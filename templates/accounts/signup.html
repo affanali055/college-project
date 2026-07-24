@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign Up - CoWork{% endblock %}
+
+{% block content %}
+<div class="glass-panel auth-container" style="max-width: 550px;">
+    <div class="auth-header">
+        <h2>Create an Account</h2>
+        <p>Discover workspaces or manage listing properties</p>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-error">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-top: 4px;">
+                        {{ field.help_text }}
+                    </span>
+                {% endif %}
+                {% if field.errors %}
+                    <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">
+                        {% for error in field.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+            <i class="fa-solid fa-user-plus"></i> Register Account
+        </button>
+    </form>
+
+    <div style="text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-secondary);">
+        Already have an account? <a href="{% url 'login' %}">Login here</a>
+    </div>
+</div>
+{% endblock %}

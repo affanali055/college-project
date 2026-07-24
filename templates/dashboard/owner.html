@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+
+{% block title %}Owner Dashboard - CoWork{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <!-- Left Menu -->
+    <div class="glass-panel dashboard-menu">
+        <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--text-secondary);">OWNER PANEL</h3>
+        <a href="#welcome" class="dashboard-menu-link active">
+            <i class="fa-solid fa-gauge"></i> Dashboard Home
+        </a>
+        <a href="#spaces" class="dashboard-menu-link">
+            <i class="fa-solid fa-building"></i> My Properties
+        </a>
+        <a href="#reservations" class="dashboard-menu-link">
+            <i class="fa-solid fa-calendar-check"></i> Booking Requests
+        </a>
+        <a href="#inquiries" class="dashboard-menu-link">
+            <i class="fa-solid fa-message"></i> Inquiries Inbox
+        </a>
+        <a href="{% url 'profile' %}" class="dashboard-menu-link">
+            <i class="fa-solid fa-user-gear"></i> Profile Settings
+        </a>
+        <a href="{% url 'logout' %}" class="dashboard-menu-link" style="color: var(--danger);">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+        </a>
+    </div>
+
+    <!-- Right Content -->
+    <div class="dashboard-content">
+        <!-- Welcome banner -->
+        <div id="welcome" class="glass-panel" style="padding: 30px;">
+            <h2 style="font-weight: 700;">Welcome, {{ user.username }} (Space Owner)</h2>
+            <p style="color: var(--text-secondary); margin-top: 4px;">
+                Manage listings, setup pricing tiers, evaluate team workstyles, and handle booking reservations.
+            </p>
+        </div>
+
+        <!-- Add Property forms -->
+        <div id="spaces" class="glass-panel" style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 20px;">
+                <h3 style="font-size: 20px; font-weight: 600;"><i class="fa-solid fa-building-circle-plus" style="color: var(--accent-primary);"></i> My Co-Working Spaces</h3>
+                <button onclick="toggleForm('createSpaceForm')" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-plus"></i> Add New Space
+                </button>
+            </div>
+
+            <!-- Create Space Form (Hidden by default) -->
+            <div id="createSpaceForm" class="glass-panel" style="padding: 20px; margin-bottom: 30px; display: none; background: rgba(0, 0, 0, 0.2);">
+                <h4 style="margin-bottom: 15px;">Register Co-Working Space</h4>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="create_space" value="1">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label for="id_name">Space Name</label>
+                            <input type="text" name="name" id="id_name" class="form-control" placeholder="e.g. Innovate Lounge Hub" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_city">City</label>
+                            <input type="text" name="city" id="id_city" class="form-control" placeholder="e.g. Chicago" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_address">Street Address</label>
+                        <input type="text" name="address" id="id_address" class="form-control" placeholder="e.g. 104 N Adams St, Suite 2" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_description">Description / Rules</label>
+                        <textarea name="description" id="id_description" rows="3" class="form-control" placeholder="Describe layout, capacity details, standard working hours, expectations..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_image_url">Thumbnail Image URL</label>
+                        <input type="url" name="image_url" id="id_image_url" class="form-control" placeholder="e.g. https://images.unsplash.com/...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Select Included Amenities</label>
+                        <div class="checkbox-group" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                            {% for amenity in all_amenities %}
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenities" value="{{ amenity.id }}">
+                                    {{ amenity.name }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="submit" class="btn btn-primary">Save Space</button>
+                        <button type="button" onclick="toggleForm('createSpaceForm')" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- List Spaces and units -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                {% for space in spaces %}
+                    <div style="border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div>
+                                <h4 style="font-size: 18px; font-weight: 600;">{{ space.name }}</h4>
+                                <p style="color: var(--text-secondary); font-size: 13px;"><i class="fa-solid fa-location-dot"></i> {{ space.address }}, {{ space.city }}</p>
+                            </div>
+                            <button onclick="openUnitModal('{{ space.id }}', '{{ space.name }}')" class="btn btn-secondary btn-sm">
+                                <i class="fa-solid fa-plus"></i> Add Unit Config
+                            </button>
+                        </div>
+
+                        <!-- Render Units -->
+                        <div style="background: rgba(0,0,0,0.1); border-radius: 8px; padding: 12px; margin-top: 10px;">
+                            <h5 style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Workspace Configuration Details</h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                {% for unit in space.units.all %}
+                                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; font-size: 13px;">
+                                        <strong>{{ unit.name }}</strong>
+                                        <div style="color: var(--text-secondary); font-size: 11px;">
+                                            Type: {{ unit.get_type_display }} <br>
+                                            Capacity: {{ unit.seating_capacity }} seats <br>
+                                            Pricing: ${{ unit.price_per_day }}/day
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <p style="font-size: 13px; color: var(--text-secondary); font-style: italic;">No workspace units configured yet.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p style="color: var(--text-secondary); text-align: center; padding: 30px;">
+                        You have not registered any co-working spaces.
+                    </p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Add Unit Form Overlay / Box (Hidden by default) -->
+        <div id="addUnitBox" class="glass-panel" style="padding: 24px; display: none; margin-bottom: 20px;">
+            <h3 id="unitBoxTitle">Add Workspace Configuration</h3>
+            <form method="POST" style="margin-top: 15px;">
+                {% csrf_token %}
+                <input type="hidden" name="add_unit" value="1">
+                <input type="hidden" name="space_id" id="unit_space_id" value="">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label for="u_name">Unit Name / Identifier</label>
+                        <input type="text" name="unit_name" id="u_name" class="form-control" placeholder="e.g. Suite 404 / Desk Row A" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="u_type">Workspace Type</label>
+                        <select name="unit_type" id="u_type">
+                            <option value="DESK">Shared Desk</option>
+                            <option value="CABIN">Private Cabin</option>
+                            <option value="MEETING">Meeting Room</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                    <div class="form-group">
+                        <label for="u_cap">Capacity (Persons)</label>
+                        <input type="number" name="seating_capacity" id="u_cap" class="form-control" required min="1" placeholder="e.g. 6">
+                    </div>
+                    <div class="form-group">
+                        <label for="u_area">Area (Sqft)</label>
+                        <input type="number" name="area_sqft" id="u_area" class="form-control" step="0.1" required placeholder="e.g. 150">
+                    </div>
+                    <div class="form-group">
+                        <label for="u_price">Price Per Day ($)</label>
+                        <input type="number" name="price_per_day" id="u_price" class="form-control" step="0.01" required placeholder="e.g. 35">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary">Save Unit Configuration</button>
+                    <button type="button" onclick="closeUnitModal()" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Booking Requests Queue -->
+        <div id="reservations" class="glass-panel table-panel">
+            <h3><i class="fa-solid fa-calendar-days" style="color: var(--accent-primary);"></i> Reservation Approvals Queue</h3>
+            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">Approve or reject pending client reservations.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Space / Workspace Unit</th>
+                        <th>Date Duration</th>
+                        <th>Price Amount</th>
+                        <th>Status</th>
+                        <th>Action Buttons</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                        <tr>
+                            <td>
+                                <strong>{{ booking.user.username }}</strong>
+                                <div style="font-size: 12px; color: var(--text-secondary);">{{ booking.user.email }}</div>
+                            </td>
+                            <td>
+                                <strong>{{ booking.unit.space.name }}</strong>
+                                <div style="font-size: 11px; color: var(--text-secondary);">{{ booking.unit.name }} ({{ booking.unit.get_type_display }})</div>
+                            </td>
+                            <td>{{ booking.start_date }} to {{ booking.end_date }} ({{ booking.duration_days }} days)</td>
+                            <td>${{ booking.total_price }}</td>
+                            <td>
+                                <span class="status-badge status-{{ booking.status|lower }}">
+                                    {{ booking.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if booking.status == 'PENDING' %}
+                                    <div style="display: flex; gap: 6px;">
+                                        <a href="{% url 'update_booking_status' booking.pk 'APPROVED' %}" class="btn btn-primary btn-sm" style="background: var(--success); color: white; padding: 4px 8px;">
+                                            <i class="fa-solid fa-check"></i> Approve
+                                        </a>
+                                        <a href="{% url 'update_booking_status' booking.pk 'REJECTED' %}" class="btn btn-danger btn-sm" style="padding: 4px 8px;">
+                                            <i class="fa-solid fa-xmark"></i> Reject
+                                        </a>
+                                    </div>
+                                {% else %}
+                                    <span style="font-size: 12px; color: var(--text-secondary);">Processed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                                No bookings have been requested for your spaces yet.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Inquiries Inbox (Expectations alignment) -->
+        <div id="inquiries" class="glass-panel" style="padding: 24px;">
+            <h3><i class="fa-solid fa-comments" style="color: #60a5fa;"></i> Inquiries Inbox (Expectations Matching)</h3>
+            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+                Review team work style expectations and communicate requirements.
+            </p>
+
+            {% for inquiry in inquiries %}
+                <div style="border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
+                        <span>
+                            <strong>Client: {{ inquiry.sender.username }}</strong> 
+                            {% if inquiry.sender.company_name %}({{ inquiry.sender.company_name }}){% endif %}
+                            regarding <strong>{{ inquiry.space.name }}</strong>
+                        </span>
+                        <span style="font-size: 12px; color: var(--text-secondary);">{{ inquiry.created_at|date:"M d, H:i" }}</span>
+                    </div>
+
+                    <p style="font-size: 14px;"><strong>Message:</strong> {{ inquiry.message }}</p>
+                    {% if inquiry.expectations %}
+                        <div class="expectations-box">
+                            <strong>Client Workspace Expectations:</strong> {{ inquiry.expectations }}
+                        </div>
+                    {% endif %}
+
+                    <!-- Display Replies -->
+                    {% if inquiry.replies.all %}
+                        <div style="margin-top: 15px; border-left: 2px solid var(--accent-primary); padding-left: 15px; display: flex; flex-direction: column; gap: 8px;">
+                            {% for reply in inquiry.replies.all %}
+                                <div style="font-size: 13px; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;">
+                                    <strong>{{ reply.sender.username }}:</strong> {{ reply.message }}
+                                    <span style="font-size: 10px; color: var(--text-secondary); float: right;">{{ reply.created_at|date:"M d, H:i" }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Inline Reply Form -->
+                    <form method="POST" action="{% url 'create_inquiry' inquiry.space.id %}" style="margin-top: 15px; display: flex; gap: 10px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="parent_id" value="{{ inquiry.id }}">
+                        <input type="text" name="message" class="form-control" style="padding: 8px 12px; font-size: 13px;" placeholder="Reply to client regarding matching style..." required>
+                        <button type="submit" class="btn btn-secondary btn-sm" style="flex-shrink: 0;">Reply</button>
+                    </form>
+                </div>
+            {% empty %}
+                <p style="color: var(--text-secondary); text-align: center; padding: 20px;">
+                    No inquiries received yet.
+                </p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function toggleForm(formId) {
+        const form = document.getElementById(formId);
+        if (form.style.display === "none") {
+            form.style.display = "block";
+        } else {
+            form.style.display = "none";
+        }
+    }
+
+    function openUnitModal(spaceId, spaceName) {
+        const box = document.getElementById("addUnitBox");
+        document.getElementById("unit_space_id").value = spaceId;
+        document.getElementById("unitBoxTitle").innerText = "Add Workspace Config for: " + spaceName;
+        box.style.display = "block";
+        box.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeUnitModal() {
+        document.getElementById("addUnitBox").style.display = "none";
+    }
+</script>
+{% endblock %}

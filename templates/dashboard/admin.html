@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Administrator Dashboard - CoWork{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <!-- Left Menu -->
+    <div class="glass-panel dashboard-menu">
+        <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--text-secondary);">ADMIN PANEL</h3>
+        <a href="#kpi" class="dashboard-menu-link active">
+            <i class="fa-solid fa-chart-line"></i> Analytics Overview
+        </a>
+        <a href="#bookings" class="dashboard-menu-link">
+            <i class="fa-solid fa-list-check"></i> System Bookings
+        </a>
+        <a href="#users" class="dashboard-menu-link">
+            <i class="fa-solid fa-users-gear"></i> System Accounts
+        </a>
+        <a href="/admin/" class="dashboard-menu-link" target="_blank" style="border-top: 1px solid var(--border-color); margin-top: 15px;">
+            <i class="fa-solid fa-gears"></i> Django Admin Site <i class="fa-solid fa-up-right-from-square" style="font-size: 10px;"></i>
+        </a>
+        <a href="{% url 'logout' %}" class="dashboard-menu-link" style="color: var(--danger);">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+        </a>
+    </div>
+
+    <!-- Right Content -->
+    <div class="dashboard-content">
+        <!-- Analytics Welcome -->
+        <div id="kpi" class="glass-panel" style="padding: 30px;">
+            <h2 style="font-weight: 700;">Platform Administrator Analytics</h2>
+            <p style="color: var(--text-secondary); margin-top: 4px;">
+                Real-time dashboard tracking client matching scores, site bookings, conversions, and workspace occupancy metrics.
+            </p>
+        </div>
+
+        <!-- KPI Grid Row -->
+        <div class="kpi-row">
+            <!-- KPI 1 -->
+            <div class="glass-panel kpi-card">
+                <div class="kpi-num">{{ total_users }}</div>
+                <div class="kpi-label">Registered Users</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
+                    Clients: {{ clients_count }} | Owners: {{ owners_count }}
+                </div>
+            </div>
+
+            <!-- KPI 2 -->
+            <div class="glass-panel kpi-card">
+                <div class="kpi-num">{{ total_spaces }}</div>
+                <div class="kpi-label">Workspace Spaces</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
+                    Active Config Units: {{ total_units }}
+                </div>
+            </div>
+
+            <!-- KPI 3 -->
+            <div class="glass-panel kpi-card">
+                <div class="kpi-num">{{ conversion_rate }}%</div>
+                <div class="kpi-label">Search-to-Book Rate</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
+                    Completion Rate: {{ booking_completion_rate }}%
+                </div>
+            </div>
+
+            <!-- KPI 4 -->
+            <div class="glass-panel kpi-card">
+                <div class="kpi-num">{{ avg_match_accuracy }}%</div>
+                <div class="kpi-label">Match Accuracy Score</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
+                    Client Satisfaction: {{ user_satisfaction }}/5.0
+                </div>
+            </div>
+        </div>
+
+        <!-- Split Grid (Recent Bookings & Users) -->
+        <div id="bookings" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px;">
+            <!-- Column 1: Recent Reservations -->
+            <div class="glass-panel table-panel">
+                <h3><i class="fa-solid fa-receipt" style="color: var(--accent-primary);"></i> System Bookings Queue</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Space</th>
+                            <th>Dates</th>
+                            <th>Cost</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in recent_bookings %}
+                            <tr>
+                                <td>{{ booking.user.username }}</td>
+                                <td>
+                                    <strong>{{ booking.unit.space.name }}</strong>
+                                    <div style="font-size: 11px; color: var(--text-secondary);">{{ booking.unit.name }}</div>
+                                </td>
+                                <td>{{ booking.start_date }}</td>
+                                <td>${{ booking.total_price }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ booking.status|lower }}" style="font-size: 11px; padding: 2px 6px;">
+                                        {{ booking.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-secondary);">No bookings recorded.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Column 2: System Users -->
+            <div id="users" class="glass-panel table-panel">
+                <h3><i class="fa-solid fa-users" style="color: #60a5fa;"></i> Recent Registrations</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usr in recent_users %}
+                            <tr>
+                                <td>
+                                    <strong>{{ usr.username }}</strong>
+                                    <div style="font-size: 11px; color: var(--text-secondary);">{{ usr.email }}</div>
+                                </td>
+                                <td>
+                                    <span style="font-size: 12px; font-weight: 500;">{{ usr.get_role_display }}</span>
+                                </td>
+                                <td style="font-size: 12px; color: var(--text-secondary);">{{ usr.date_joined|date:"M d, Y" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" style="text-align: center; padding: 20px; color: var(--text-secondary);">No registrations.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
