@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CoWork - Modern Co-Working Space Booking Platform{% endblock %}</title>
+    
+    <!-- Google Font & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="{% url 'landing_home' %}" class="logo">
+                <i class="fa-solid fa-cubes"></i> CoWork
+            </a>
+            
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="{% url 'space_list' %}" class="{% if request.resolver_match.url_name == 'space_list' %}active{% endif %}">Discover</a></li>
+                    {% if user.is_authenticated %}
+                        <li>
+                            <a href="{% url 'dashboard_home' %}" class="{% if 'dashboard' in request.resolver_match.url_name %}active{% endif %}">
+                                Dashboard ({% if user.role == 'OWNER' %}Owner{% elif user.role == 'ADMIN' %}Admin{% else %}Client{% endif %})
+                            </a>
+                        </li>
+                        <li><a href="{% url 'profile' %}" class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Profile</a></li>
+                        <li><a href="{% url 'logout' %}" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a></li>
+                    {% else %}
+                        <li><a href="{% url 'login' %}" class="{% if request.resolver_match.url_name == 'login' %}active{% endif %}">Login</a></li>
+                        <li><a href="{% url 'signup' %}" class="btn btn-primary btn-sm">Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li class="alert alert-{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
+                        {% if message.tags == 'success' %}
+                            <i class="fa-solid fa-circle-check"></i>
+                        {% else %}
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                        {% endif %}
+                        {{ message }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 CoWork. Designed for premium hybrid & remote team experiences. All rights reserved.</p>
+        </div>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

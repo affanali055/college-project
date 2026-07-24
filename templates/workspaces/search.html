@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Find Co-Working Spaces - CoWork{% endblock %}
+
+{% block content %}
+<div class="search-container">
+    <!-- Filter Sidebar -->
+    <div class="glass-panel search-sidebar">
+        <h3><i class="fa-solid fa-filter"></i> Filters</h3>
+        <form method="GET" action="{% url 'space_list' %}">
+            
+            <!-- Text Query -->
+            <div class="form-group">
+                <label for="q">Keyword Search</label>
+                <input type="text" name="q" id="q" class="form-control" placeholder="Name, street, etc." value="{{ query }}">
+            </div>
+
+            <!-- Location -->
+            <div class="form-group">
+                <label for="city">City / Area</label>
+                <select name="city" id="city">
+                    <option value="">All Locations</option>
+                    {% for c in cities %}
+                        <option value="{{ c }}" {% if city == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Capacity -->
+            <div class="form-group">
+                <label for="capacity">Min Team Size (Persons)</label>
+                <input type="number" name="capacity" id="capacity" class="form-control" placeholder="e.g. 5" value="{{ capacity }}">
+            </div>
+
+            <!-- Budget -->
+            <div class="form-group">
+                <label for="max_price">Max Price per Day ($)</label>
+                <input type="number" name="max_price" id="max_price" class="form-control" placeholder="e.g. 50" value="{{ max_price }}">
+            </div>
+
+            <!-- Workspace Type -->
+            <div class="form-group">
+                <label for="unit_type">Workspace Type</label>
+                <select name="unit_type" id="unit_type">
+                    <option value="">All Types</option>
+                    <option value="DESK" {% if unit_type == 'DESK' %}selected{% endif %}>Shared Desk</option>
+                    <option value="CABIN" {% if unit_type == 'CABIN' %}selected{% endif %}>Private Cabin</option>
+                    <option value="MEETING" {% if unit_type == 'MEETING' %}selected{% endif %}>Meeting Room</option>
+                </select>
+            </div>
+
+            <!-- Amenities -->
+            <div class="form-group">
+                <label>Amenities</label>
+                <div class="checkbox-group">
+                    {% for amenity in all_amenities %}
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="amenities" value="{{ amenity.id }}" 
+                                   {% if amenity.id in selected_amenities %}checked{% endif %}>
+                            {{ amenity.name }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                <i class="fa-solid fa-magnifying-glass"></i> Apply Filters
+            </button>
+            
+            <a href="{% url 'space_list' %}" class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 10px; display: inline-block; text-align: center;">
+                Reset Filters
+            </a>
+        </form>
+    </div>
+
+    <!-- Workspace Listings -->
+    <div class="search-results">
+        <h2 style="font-weight: 700;">Discover Spaces</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 10px;">Found {{ spaces|length }} co-working space(s) matching your parameters.</p>
+
+        {% for space in spaces %}
+            <div class="glass-panel space-card">
+                <!-- Cover Image -->
+                <div class="space-card-img" style="background-image: url('{{ space.image_url|default:"https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80" }}');">
+                    {% if space.match_score %}
+                        <span class="match-badge">
+                            <i class="fa-solid fa-fire"></i> {{ space.match_score }}% Match
+                        </span>
+                    {% endif %}
+                </div>
+
+                <!-- Info Details -->
+                <div class="space-card-info">
+                    <div>
+                        <div class="space-card-header">
+                            <div class="space-card-title">
+                                <h2>{{ space.name }}</h2>
+                                <p><i class="fa-solid fa-location-dot"></i> {{ space.address }}, {{ space.city }}</p>
+                            </div>
+                            <div class="space-price">
+                                <div class="price-num">${{ space.get_min_price }}</div>
+                                <div class="price-label">from / day</div>
+                            </div>
+                        </div>
+
+                        <p class="space-card-desc">{{ space.description }}</p>
+
+                        <!-- Amenities -->
+                        <div class="space-amenities-tags">
+                            {% for amenity in space.amenities.all %}
+                                <span class="amenity-tag">
+                                    {{ amenity.name }}
+                                </span>
+                            {% empty %}
+                                <span class="amenity-tag">Standard workspace amenities</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="space-card-footer">
+                        <div class="matching-reasons">
+                            {% for reason in space.match_reasons %}
+                                <span><i class="fa-solid fa-circle-check"></i> {{ reason }}</span>
+                            {% endfor %}
+                        </div>
+                        <a href="{% url 'space_detail' space.pk %}" class="btn btn-outline btn-sm">
+                            View Workspaces <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <!-- Empty State -->
+            <div class="glass-panel" style="padding: 60px; text-align: center;">
+                <i class="fa-regular fa-folder-open" style="font-size: 60px; color: var(--text-secondary); margin-bottom: 20px;"></i>
+                <h3>No Spaces Found</h3>
+                <p style="color: var(--text-secondary); max-width: 400px; margin: 10px auto;">
+                    We couldn't find any workspace matching your exact search filters. Try widening your budget or adjusting amenity selections.
+                </p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

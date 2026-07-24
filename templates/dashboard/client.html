@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Client Dashboard - CoWork{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <!-- Left Menu -->
+    <div class="glass-panel dashboard-menu">
+        <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--text-secondary);">CLIENT PANEL</h3>
+        <a href="{% url 'dashboard_home' %}" class="dashboard-menu-link active">
+            <i class="fa-solid fa-gauge"></i> Dashboard Home
+        </a>
+        <a href="{% url 'space_list' %}" class="dashboard-menu-link">
+            <i class="fa-solid fa-magnifying-glass"></i> Search Spaces
+        </a>
+        <a href="{% url 'profile' %}" class="dashboard-menu-link">
+            <i class="fa-solid fa-user-gear"></i> Profile Settings
+        </a>
+        <a href="{% url 'logout' %}" class="dashboard-menu-link" style="color: var(--danger);">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+        </a>
+    </div>
+
+    <!-- Right Content -->
+    <div class="dashboard-content">
+        <!-- Dashboard Welcome -->
+        <div class="glass-panel" style="padding: 30px;">
+            <h2 style="font-weight: 700;">Welcome, {{ user.first_name|default:user.username }}!</h2>
+            <p style="color: var(--text-secondary); margin-top: 4px;">
+                Manage your reservations, view owner feedback on team style compatibility, or explore recommendations.
+            </p>
+        </div>
+
+        <!-- Bookings Section -->
+        <div class="glass-panel table-panel">
+            <h3><i class="fa-solid fa-calendar-days" style="color: var(--accent-primary);"></i> My Reservations</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Workspace / Space</th>
+                        <th>Type</th>
+                        <th>Dates</th>
+                        <th>Total Cost</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                        <tr>
+                            <td>
+                                <strong>{{ booking.unit.space.name }}</strong>
+                                <div style="font-size: 12px; color: var(--text-secondary);">{{ booking.unit.name }}</div>
+                            </td>
+                            <td>{{ booking.unit.get_type_display }}</td>
+                            <td>{{ booking.start_date }} to {{ booking.end_date }}</td>
+                            <td>${{ booking.total_price }}</td>
+                            <td>
+                                <span class="status-badge status-{{ booking.status|lower }}">
+                                    {{ booking.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
+                                    {% if booking.status == 'PENDING' or booking.status == 'APPROVED' %}
+                                        <a href="https://wa.me/919380747558?text=Hello%20Owner%2C%20I%20have%20submitted%20a%20booking%20request%20on%20CoWork%21%0A%0A📍%20*Space%3A*%20{{ booking.unit.space.name|urlencode }}%0A💼%20*Unit%3A*%20{{ booking.unit.name|urlencode }}%0A👤%20*Client%3A*%20{{ booking.user.username|urlencode }}%0A📅%20*Dates%3A*%20{{ booking.start_date }}%20to%20{{ booking.end_date }}%0A💰%20*Total%20Price%3A*%20%24{{ booking.total_price }}" 
+                                           target="_blank" class="btn btn-primary btn-sm" style="background: #25d366; color: black; border: none; font-size: 11px; text-shadow: none;">
+                                            <i class="fa-brands fa-whatsapp"></i> Notify Owner
+                                        </a>
+                                        <a href="{% url 'cancel_booking' booking.pk %}" class="btn btn-danger btn-sm" style="font-size: 11px;" onclick="return confirm('Are you sure you want to cancel this booking request?');">
+                                            Cancel
+                                        </a>
+                                    {% else %}
+                                        <span style="color: var(--text-secondary); font-size: 12px;">No Actions</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                                You haven't made any bookings yet. <a href="{% url 'space_list' %}">Discover spaces</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Inquiries / Expectation Matches -->
+        <div class="glass-panel" style="padding: 24px;">
+            <h3><i class="fa-solid fa-comments" style="color: #60a5fa;"></i> Inquiries & Expectation Matching</h3>
+            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+                Direct message threads with space owners regarding team work style compatibility.
+            </p>
+
+            {% for inquiry in inquiries %}
+                <div style="border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px;">
+                        <strong>Regarding: <a href="{% url 'space_detail' inquiry.space.pk %}">{{ inquiry.space.name }}</a></strong>
+                        <span style="font-size: 12px; color: var(--text-secondary);">{{ inquiry.created_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    
+                    <p style="font-size: 14px;"><strong>Your Message:</strong> {{ inquiry.message }}</p>
+                    {% if inquiry.expectations %}
+                        <div class="expectations-box">
+                            <strong>Your Team Style Expectations:</strong> {{ inquiry.expectations }}
+                        </div>
+                    {% endif %}
+
+                    <!-- Thread Replies -->
+                    {% if inquiry.replies.all %}
+                        <div style="margin-top: 15px; border-left: 2px solid var(--accent-primary); padding-left: 15px; display: flex; flex-direction: column; gap: 10px;">
+                            {% for reply in inquiry.replies.all %}
+                                <div style="font-size: 13px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                        <strong>{{ reply.sender.username }} ({{ reply.sender.get_role_display }})</strong>
+                                        <span style="font-size: 11px; color: var(--text-secondary);">{{ reply.created_at|date:"M d, H:i" }}</span>
+                                    </div>
+                                    <p>{{ reply.message }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 10px; font-style: italic;">
+                            Waiting for response from space owner...
+                        </p>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <p style="color: var(--text-secondary); font-size: 14px; text-align: center; padding: 20px;">
+                    No expectations match inquiries submitted.
+                </p>
+            {% endfor %}
+        </div>
+
+        <!-- Recommendations Grid -->
+        <div>
+            <h3 style="font-weight: 700; margin-bottom: 16px;"><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-primary);"></i> Smart Match Workspace Recommendations</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+                {% for space in recommendations %}
+                    <div class="glass-panel" style="overflow: hidden; border-radius: 12px; font-size: 14px;">
+                        <div style="height: 120px; background-image: url('{{ space.image_url|default:"https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=300&q=80" }}'); background-size: cover; background-position: center;"></div>
+                        <div style="padding: 16px;">
+                            <h4 style="font-size: 16px; font-weight: 600;">{{ space.name }}</h4>
+                            <p style="color: var(--text-secondary); font-size: 12px; margin-top: 2px;"><i class="fa-solid fa-location-dot"></i> {{ space.city }}</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
+                                <span style="font-weight: 700; color: var(--accent-primary);">${{ space.get_min_price }}/day</span>
+                                <a href="{% url 'space_detail' space.pk %}" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px;">View Space</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
