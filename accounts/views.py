@@ -7,26 +7,26 @@ from .models import CustomUser
 
 def signup_view(request):
     if request.user.is_authenticated:
-        return redirect('dashboard_home')
+        return redirect('dashboard_home')      
         
-    if request.method == 'POST':
+    if request.method == 'POST': 
         form = CustomUserCreationForm(request.POST)
-        if form.is_valid():
+        if form.is_valid():      
             user = form.save()
-            login(request, user)
+            login(request, user) 
             messages.success(request, f"Welcome, {user.username}! Your account has been created.")
             return redirect('dashboard_home')
-        else:
+        else:   
             messages.error(request, "Please correct the errors below.")
     else:
         form = CustomUserCreationForm()
         
     return render(request, 'accounts/signup.html', {'form': form})
 
-def logout_view(request):
-    logout(request)
+def logout_view(request):  
+    logout(request)  
     messages.success(request, "You have been logged out successfully.")
-    return redirect('login')
+    return redirect('login')  
 
 @login_required
 def profile_view(request):
@@ -42,3 +42,11 @@ def profile_view(request):
         return redirect('profile')
         
     return render(request, 'accounts/profile.html')
+
+from django.http import JsonResponse
+
+@login_required
+def mark_notifications_read(request):
+    request.user.notifications.filter(is_read=False).update(is_read=True)
+    return JsonResponse({'success': True})
+

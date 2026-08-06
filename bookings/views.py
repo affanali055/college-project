@@ -56,6 +56,7 @@ def create_booking_view(request):
         unit_id = request.POST.get('unit_id')
         start_date_str = request.POST.get('start_date')
         end_date_str = request.POST.get('end_date')
+        promo_code_str = request.POST.get('promo_code', '').strip().upper()
 
         if not unit_id or not start_date_str or not end_date_str:
             messages.error(request, "Missing booking dates or workspace selection.")
@@ -84,6 +85,17 @@ def create_booking_view(request):
             messages.error(request, "The selected workspace unit is not available for the chosen dates.")
             return redirect('space_detail', pk=unit.space.pk)
 
+        # Promo Code logic
+        promo_code = None
+        discount_amount = 0.0
+        if promo_code_str:
+            try:
+                from .models import PromoCode
+                promo = PromoCode.objects.get(code=promo_code_str, is_active=True)
+                promo_code = promo
+            except PromoCode.DoesNotExist:
+                pass
+
         # Create Booking
         booking = Booking(
             user=request.user,
@@ -91,8 +103,31 @@ def create_booking_view(request):
             start_date=start_date,
             end_date=end_date,
         )
-        booking.total_price = booking.calculate_total_price()
+        base_price = booking.calculate_total_price()
+        if promo_code:
+            from decimal import Decimal
+            discount_percent = Decimal(promo_code.discount_percent)
+            discount_amount = (base_price * discount_percent) / Decimal(100)
+            booking.promo_code = promo_code
+            booking.discount_amount = discount_amount
+            booking.total_price = base_price - discount_amount
+        else:
+            booking.total_price = base_price
+            
         booking.save()
+
+        # Create In-App Notifications
+        from accounts.models import Notification
+        Notification.objects.create(
+            user=request.user,
+            title="Booking Request Submitted",
+            message=f"Your booking request for {unit.name} from {start_date} to {end_date} has been submitted (Total: ${booking.total_price})."
+        )
+        Notification.objects.create(
+            user=unit.space.owner,
+            title="New Booking Request Received",
+            message=f"Client {request.user.username} has requested a booking for {unit.name} from {start_date} to {end_date}."
+        )
 
         # Simulate Email Notification to Space Owner
         owner_email = unit.space.owner.email
@@ -114,7 +149,6 @@ def create_booking_view(request):
                 fail_silently=False,
             )
         except Exception as e:
-            # Fallback if email backend has issues, but since it's console email it will print
             print(f"Email failed to send: {e}")
 
         # Send WhatsApp Notification to Administrator
@@ -130,8 +164,29 @@ def create_booking_view(request):
         to_whatsapp = getattr(settings, 'ADMIN_WHATSAPP_NUMBER', '9380747558')
         send_whatsapp_notification(to_whatsapp, whatsapp_msg)
 
-        messages.success(request, f"Your booking request for '{unit.name}' has been submitted. Status: Pending Approval.")
-        return redirect('dashboard_home')
+        # Redirect user immediately to their WhatsApp with populated message
+        import urllib.parse
+        duration = booking.duration_days()
+        promo_info = f"\n🎟️ *Promo Code:* {promo_code.code} ({promo_code.discount_percent}% Off)" if promo_code else ""
+        whatsapp_chat_msg = (
+            f"🚀 *CoWork Booking Request Submitted!*\n"
+            f"-----------------------------------------\n"
+            f"📍 *Workspace:* {unit.space.name}\n"
+            f"💼 *Unit Type:* {unit.get_type_display()} ({unit.name})\n"
+            f"👤 *Client Name:* {request.user.username}\n"
+            f"📅 *Duration:* {start_date} to {end_date} ({duration} day{'s' if duration > 1 else ''})\n"
+            f"💰 *Daily Rate:* ${unit.price_per_day}/day\n"
+            f"🔥 *Total Estimate:* ${booking.total_price}{promo_info}\n"
+            f"⚡ *Booking Status:* Pending Owner Approval\n"
+            f"-----------------------------------------\n"
+            f"Please verify availability and approve my request at your earliest convenience. Thank you!"
+        )
+        
+        encoded_chat_msg = urllib.parse.quote(whatsapp_chat_msg)
+        whatsapp_redirect_url = f"https://wa.me/919380747558?text={encoded_chat_msg}"
+
+        messages.success(request, f"Your booking request for '{unit.name}' has been submitted! Redirecting to WhatsApp to notify owner...")
+        return redirect(whatsapp_redirect_url)
 
     return redirect('space_list')
 
@@ -147,6 +202,14 @@ def update_booking_status_view(request, pk, status):
     if status in ['APPROVED', 'REJECTED', 'CANCELLED']:
         booking.status = status
         booking.save()
+
+        # Create In-App Notification
+        from accounts.models import Notification
+        Notification.objects.create(
+            user=booking.user,
+            title=f"Booking Request {status.title()}",
+            message=f"Your booking request for {booking.unit.name} from {booking.start_date} to {booking.end_date} has been {status.lower()}."
+        )
 
         # Simulate Email Notification to Client
         client_email = booking.user.email
@@ -199,6 +262,14 @@ def cancel_booking_view(request, pk):
 
     booking.status = 'CANCELLED'
     booking.save()
+
+    # Create In-App Notification for Owner
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=booking.unit.space.owner,
+        title="Booking Cancelled by Client",
+        message=f"Client {request.user.username} has cancelled their booking for {booking.unit.name} from {booking.start_date} to {booking.end_date}."
+    )
     
     messages.success(request, "Your booking has been cancelled.")
     return redirect('dashboard_home')
@@ -223,7 +294,48 @@ def create_inquiry_view(request, space_id):
             parent=parent_inquiry
         )
 
+        # Create In-App Notification
+        from accounts.models import Notification
+        if parent_inquiry:
+            recipient = parent_inquiry.sender if request.user == space.owner else space.owner
+            title = "New Reply on Inquiry"
+            msg_text = f"You received a reply from {request.user.username} regarding {space.name}."
+        else:
+            recipient = space.owner
+            title = "New Workspace Inquiry"
+            msg_text = f"Client {request.user.username} has sent an inquiry regarding {space.name}."
+
+        Notification.objects.create(
+            user=recipient,
+            title=title,
+            message=msg_text
+        )
+
         messages.success(request, "Your inquiry / team expectations have been sent successfully.")
         return redirect('space_detail', pk=space.pk)
 
     return redirect('space_detail', pk=space.pk)
+
+def api_booked_dates(request, unit_id):
+    unit = get_object_or_404(WorkspaceUnit, pk=unit_id)
+    bookings = Booking.objects.filter(
+        unit=unit,
+        status__in=['PENDING', 'APPROVED']
+    )
+    booked_ranges = []
+    for b in bookings:
+        booked_ranges.append({
+            'start': b.start_date.strftime('%Y-%m-%d'),
+            'end': b.end_date.strftime('%Y-%m-%d')
+        })
+    return JsonResponse({'booked_dates': booked_ranges})
+
+def api_validate_promo(request):
+    code_str = request.GET.get('code', '').strip().upper()
+    try:
+        from .models import PromoCode
+        promo = PromoCode.objects.get(code=code_str, is_active=True)
+        return JsonResponse({'valid': True, 'discount_percent': promo.discount_percent})
+    except PromoCode.DoesNotExist:
+        return JsonResponse({'valid': False, 'message': 'Invalid or inactive promo code.'})
+

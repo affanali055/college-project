@@ -190,4 +190,42 @@ class Command(BaseCommand):
             )
             self.stdout.write("Created Space: Silicon Valley Launchpad (San Jose)")
 
+        # 4. Seed Promo Codes, Reviews, Notifications
+        from bookings.models import PromoCode
+        from workspaces.models import Review
+        from accounts.models import Notification
+
+        promo1, _ = PromoCode.objects.get_or_create(code="COWORK10", defaults={"discount_percent": 10})
+        promo2, _ = PromoCode.objects.get_or_create(code="WELCOME20", defaults={"discount_percent": 20})
+        self.stdout.write("Created Promo Codes: COWORK10, WELCOME20")
+
+        if not Review.objects.exists():
+            Review.objects.create(
+                space=space1,
+                user=client_user,
+                rating=5,
+                comment="Absolutely amazing workspace! The Wi-Fi is super fast and John is very accommodating."
+            )
+            Review.objects.create(
+                space=space2,
+                user=client_user,
+                rating=4,
+                comment="Great city view, although parking was a bit tight. Clean and quiet."
+            )
+            self.stdout.write("Seeded sample reviews.")
+
+        if not Notification.objects.exists():
+            Notification.objects.create(
+                user=client_user,
+                title="Welcome to CoWork!",
+                message="Discover local workspaces, check expectations matching and book instantly.",
+            )
+            Notification.objects.create(
+                user=owner_user,
+                title="New Space Registered",
+                message="You have successfully registered your properties. Add workspace units to begin receiving bookings.",
+            )
+            self.stdout.write("Seeded sample notifications.")
+
         self.stdout.write(self.style.SUCCESS("Database seeding completed successfully!"))
+

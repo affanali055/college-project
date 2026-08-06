@@ -37,6 +37,14 @@ class CoWorkingSpace(models.Model):
         units = self.units.all()
         return max([u.seating_capacity for u in units]) if units else 0
 
+    def get_average_rating(self):
+        avg = self.reviews.aggregate(models.Avg('rating'))['rating__avg']
+        return round(avg, 1) if avg is not None else 0.0
+
+    def get_rating_stars_list(self):
+        avg = self.get_average_rating()
+        return range(int(round(avg)))
+
     def __str__(self):
         return f"{self.name} - {self.city}"
 
@@ -61,3 +69,22 @@ class WorkspaceUnit(models.Model):
 
     def __str__(self):
         return f"{self.space.name} - {self.name} ({self.get_type_display()})"
+
+class Review(models.Model):
+    space = models.ForeignKey(
+        CoWorkingSpace,
+        on_delete=models.CASCADE,
+        related_name='reviews'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reviews'
+    )
+    rating = models.PositiveIntegerField(default=5)
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Review ({self.rating}/5) for {self.space.name} by {self.user.username}"
+
