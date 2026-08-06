@@ -44,7 +44,7 @@ class Command(BaseCommand):
             admin_user.save()
             self.stdout.write("Created Superuser account: admin / AdminPass123!")
 
-        # Space Owner
+        # Space Owners
         owner_user, created = CustomUser.objects.get_or_create(
             username="owner_john",
             defaults={
@@ -59,7 +59,21 @@ class Command(BaseCommand):
             owner_user.save()
             self.stdout.write("Created Space Owner account: owner_john / OwnerPass123!")
 
-        # Client User
+        owner_sarah, created = CustomUser.objects.get_or_create(
+            username="owner_sarah",
+            defaults={
+                "email": "sarah@owner.com",
+                "role": "OWNER",
+                "phone": "+1222333444",
+                "company_name": "Skyline Premium Offices"
+            }
+        )
+        if created:
+            owner_sarah.set_password("SarahPass123!")
+            owner_sarah.save()
+            self.stdout.write("Created Space Owner account: owner_sarah / SarahPass123!")
+
+        # Client Users
         client_user, created = CustomUser.objects.get_or_create(
             username="client_alice",
             defaults={
@@ -73,6 +87,20 @@ class Command(BaseCommand):
             client_user.set_password("ClientPass123!")
             client_user.save()
             self.stdout.write("Created Client account: client_alice / ClientPass123!")
+
+        client_bob, created = CustomUser.objects.get_or_create(
+            username="client_bob",
+            defaults={
+                "email": "bob@client.com",
+                "role": "CLIENT",
+                "phone": "+1999888777",
+                "company_name": "Freelance Devs"
+            }
+        )
+        if created:
+            client_bob.set_password("BobPass123!")
+            client_bob.save()
+            self.stdout.write("Created Client account: client_bob / BobPass123!")
 
         # 3. Create Sample Spaces & Workspace Units
         # Space 1: Seattle
@@ -190,14 +218,132 @@ class Command(BaseCommand):
             )
             self.stdout.write("Created Space: Silicon Valley Launchpad (San Jose)")
 
+        # Space 4: New York
+        space4, created = CoWorkingSpace.objects.get_or_create(
+            name="Manhattan Skyline Executive Suite",
+            defaults={
+                "owner": owner_sarah,
+                "description": "Located in Midtown Manhattan, this premium space offers private office suites, a corporate meeting space, and breathtaking city skyline views.",
+                "address": "230 Park Ave, Floor 25",
+                "city": "New York",
+                "image_url": "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80"
+            }
+        )
+        if created:
+            space4.amenities.add(
+                amenities["High-Speed Wi-Fi"],
+                amenities["Conference Meeting Rooms"],
+                amenities["Cafeteria & Lounge"],
+                amenities["24/7 Power Backup"],
+                amenities["Security Surveillance"]
+            )
+            WorkspaceUnit.objects.create(
+                space=space4,
+                name="Executive Suite A",
+                type="CABIN",
+                seating_capacity=6,
+                area_sqft=150.00,
+                price_per_day=180.00
+            )
+            WorkspaceUnit.objects.create(
+                space=space4,
+                name="Skyline Boardroom",
+                type="MEETING",
+                seating_capacity=20,
+                area_sqft=450.00,
+                price_per_day=120.00
+            )
+            WorkspaceUnit.objects.create(
+                space=space4,
+                name="Hot Desk New York",
+                type="DESK",
+                seating_capacity=1,
+                area_sqft=20.00,
+                price_per_day=35.00
+            )
+            self.stdout.write("Created Space: Manhattan Skyline Executive Suite (New York)")
+
+        # Space 5: Austin
+        space5, created = CoWorkingSpace.objects.get_or_create(
+            name="Austin Creative Garage",
+            defaults={
+                "owner": owner_user,
+                "description": "A relaxed, open-plan workspace designed for freelancers, artists, and creators. Dog-friendly with local coffee on tap.",
+                "address": "501 Congress Ave",
+                "city": "Austin",
+                "image_url": "https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=600&q=80"
+            }
+        )
+        if created:
+            space5.amenities.add(
+                amenities["High-Speed Wi-Fi"],
+                amenities["Reserved Parking Lot"],
+                amenities["Cafeteria & Lounge"]
+            )
+            WorkspaceUnit.objects.create(
+                space=space5,
+                name="Shared Bench Desk 1",
+                type="DESK",
+                seating_capacity=1,
+                area_sqft=16.00,
+                price_per_day=15.00
+            )
+            WorkspaceUnit.objects.create(
+                space=space5,
+                name="Podcast & Media Studio",
+                type="MEETING",
+                seating_capacity=4,
+                area_sqft=80.00,
+                price_per_day=50.00
+            )
+            self.stdout.write("Created Space: Austin Creative Garage (Austin)")
+
+        # Space 6: Chicago
+        space6, created = CoWorkingSpace.objects.get_or_create(
+            name="Chicago Loop Workspace",
+            defaults={
+                "owner": owner_sarah,
+                "description": "Professional hybrid office setups right in the Chicago Loop. Perfect for corporate teams needing temporary headquarters.",
+                "address": "111 W Jackson Blvd",
+                "city": "Chicago",
+                "image_url": "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=600&q=80"
+            }
+        )
+        if created:
+            space6.amenities.add(
+                amenities["High-Speed Wi-Fi"],
+                amenities["Conference Meeting Rooms"],
+                amenities["24/7 Power Backup"],
+                amenities["Security Surveillance"]
+            )
+            WorkspaceUnit.objects.create(
+                space=space6,
+                name="Team Office Suite 10",
+                type="CABIN",
+                seating_capacity=15,
+                area_sqft=350.00,
+                price_per_day=250.00
+            )
+            WorkspaceUnit.objects.create(
+                space=space6,
+                name="Hot Desk Chicago",
+                type="DESK",
+                seating_capacity=1,
+                area_sqft=15.00,
+                price_per_day=22.00
+            )
+            self.stdout.write("Created Space: Chicago Loop Workspace (Chicago)")
+
         # 4. Seed Promo Codes, Reviews, Notifications
         from bookings.models import PromoCode
         from workspaces.models import Review
         from accounts.models import Notification
 
-        promo1, _ = PromoCode.objects.get_or_create(code="COWORK10", defaults={"discount_percent": 10})
-        promo2, _ = PromoCode.objects.get_or_create(code="WELCOME20", defaults={"discount_percent": 20})
-        self.stdout.write("Created Promo Codes: COWORK10, WELCOME20")
+        PromoCode.objects.get_or_create(code="COWORK10", defaults={"discount_percent": 10})
+        PromoCode.objects.get_or_create(code="WELCOME20", defaults={"discount_percent": 20})
+        PromoCode.objects.get_or_create(code="SAVEMORE", defaults={"discount_percent": 15})
+        PromoCode.objects.get_or_create(code="FESTIVE30", defaults={"discount_percent": 30})
+        self.stdout.write("Created Promo Codes: COWORK10, WELCOME20, SAVEMORE, FESTIVE30")
 
         if not Review.objects.exists():
             Review.objects.create(
@@ -212,6 +358,24 @@ class Command(BaseCommand):
                 rating=4,
                 comment="Great city view, although parking was a bit tight. Clean and quiet."
             )
+            Review.objects.create(
+                space=space3,
+                user=client_bob,
+                rating=5,
+                comment="Awesome startup atmosphere. Highly recommended for remote founders!"
+            )
+            Review.objects.create(
+                space=space4,
+                user=client_bob,
+                rating=5,
+                comment="The views from the 25th floor are stunning. Clean desk and quiet boardroom."
+            )
+            Review.objects.create(
+                space=space5,
+                user=client_user,
+                rating=4,
+                comment="Love the community and free local coffee. Dog friendly too!"
+            )
             self.stdout.write("Seeded sample reviews.")
 
         if not Notification.objects.exists():
@@ -221,9 +385,19 @@ class Command(BaseCommand):
                 message="Discover local workspaces, check expectations matching and book instantly.",
             )
             Notification.objects.create(
+                user=client_bob,
+                title="Welcome to CoWork!",
+                message="Discover local workspaces, check expectations matching and book instantly.",
+            )
+            Notification.objects.create(
                 user=owner_user,
                 title="New Space Registered",
                 message="You have successfully registered your properties. Add workspace units to begin receiving bookings.",
+            )
+            Notification.objects.create(
+                user=owner_sarah,
+                title="Partner Account Approved",
+                message="Welcome to the CoWork network! You can now manage properties and view client expectations.",
             )
             self.stdout.write("Seeded sample notifications.")
 
