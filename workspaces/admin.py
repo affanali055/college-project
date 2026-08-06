@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Amenity, CoWorkingSpace, WorkspaceUnit
+from .models import Amenity, CoWorkingSpace, WorkspaceUnit, Review
 
 @admin.register(Amenity)
 class AmenityAdmin(admin.ModelAdmin):
@@ -21,3 +21,10 @@ class WorkspaceUnitAdmin(admin.ModelAdmin):
     list_display = ['name', 'space', 'type', 'seating_capacity', 'price_per_day', 'is_active']
     list_filter = ['type', 'is_active']
     search_fields = ['name', 'space__name']
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ['space', 'user', 'rating', 'created_at']
+    list_filter = ['rating', 'created_at']
+    search_fields = ['space__name', 'user__username', 'comment']
+

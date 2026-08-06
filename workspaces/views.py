@@ -93,13 +93,75 @@ def space_list_view(request):
     return render(request, 'workspaces/search.html', context)
 
 def space_detail_view(request, pk):
-    space = get_object_or_404(CoWorkingSpace.objects.prefetch_related('units', 'amenities'), pk=pk)
-    # Available types for display
+    space = get_object_or_404(CoWorkingSpace.objects.prefetch_related('units', 'amenities', 'reviews__user'), pk=pk)
     units = space.units.filter(is_active=True)
+    reviews = space.reviews.all().order_by('-created_at')
     
+    can_review = False
+    if request.user.is_authenticated:
+        from bookings.models import Booking
+        can_review = Booking.objects.filter(
+            user=request.user,
+            unit__space=space,
+            status='APPROVED'
+        ).exists()
+        
     context = {
         'space': space,
         'units': units,
         'unit_types': WorkspaceUnit.UNIT_TYPES,
+        'reviews': reviews,
+        'can_review': can_review,
     }
     return render(request, 'workspaces/detail.html', context)
+
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .models import Review
+
+@login_required
+def submit_review_view(request, space_id):
+    if request.method == 'POST':
+        space = get_object_or_404(CoWorkingSpace, pk=space_id)
+        rating_str = request.POST.get('rating')
+        comment = request.POST.get('comment', '').strip()
+        
+        try:
+            rating = int(rating_str)
+            if rating < 1 or rating > 5:
+                raise ValueError()
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid rating selected.")
+            return redirect('space_detail', pk=space_id)
+            
+        # Check if the user has booked this space
+        from bookings.models import Booking
+        has_booked = Booking.objects.filter(
+            user=request.user,
+            unit__space=space,
+            status='APPROVED'
+        ).exists()
+        
+        if not has_booked:
+            messages.error(request, "You can only review workspaces you have had an approved booking with.")
+            return redirect('space_detail', pk=space_id)
+            
+        Review.objects.create(
+            space=space,
+            user=request.user,
+            rating=rating,
+            comment=comment
+        )
+        
+        # Notify the owner about the new review
+        from accounts.models import Notification
+        Notification.objects.create(
+            user=space.owner,
+            title="New Review Received",
+            message=f"Your space '{space.name}' received a {rating}-star review from {request.user.username}."
+        )
+        
+        messages.success(request, "Thank you! Your review has been submitted successfully.")
+        
+    return redirect('space_detail', pk=space_id)
+

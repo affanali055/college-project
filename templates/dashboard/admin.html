@@ -73,6 +73,22 @@
             </div>
         </div>
 
+        <!-- Charts Grid Row -->
+        <div class="chart-grid">
+            <div class="glass-panel" style="padding: 24px; margin-bottom: 25px;">
+                <h3 style="margin-bottom: 15px; font-size: 16px;"><i class="fa-solid fa-chart-line" style="color: var(--accent-primary);"></i> Monthly Platform Revenue</h3>
+                <div style="position: relative; height: 220px; width: 100%;">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+            <div class="glass-panel" style="padding: 24px; margin-bottom: 25px;">
+                <h3 style="margin-bottom: 15px; font-size: 16px;"><i class="fa-solid fa-chart-pie" style="color: #60a5fa;"></i> User Accounts Distribution</h3>
+                <div style="position: relative; height: 220px; width: 100%;">
+                    <canvas id="userDistChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Split Grid (Recent Bookings & Users) -->
         <div id="bookings" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px;">
             <!-- Column 1: Recent Reservations -->
@@ -147,4 +163,77 @@
         </div>
     </div>
 </div>
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Chart 1: Platform Revenue (Line Chart)
+        const ctxRev = document.getElementById('revenueChart').getContext('2d');
+        const revenueGradient = ctxRev.createLinearGradient(0, 0, 0, 220);
+        revenueGradient.addColorStop(0, 'rgba(0, 242, 254, 0.25)');
+        revenueGradient.addColorStop(1, 'rgba(0, 242, 254, 0.00)');
+
+        new Chart(ctxRev, {
+            type: 'line',
+            data: {
+                labels: {{ months_labels|safe }},
+                datasets: [{
+                    label: 'Revenue ($)',
+                    data: {{ revenue_data|safe }},
+                    borderColor: '#00f2fe',
+                    backgroundColor: revenueGradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#00f2fe',
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // Chart 2: User Distribution (Doughnut Chart)
+        const ctxDist = document.getElementById('userDistChart').getContext('2d');
+        new Chart(ctxDist, {
+            type: 'doughnut',
+            data: {
+                labels: ['Clients', 'Owners', 'Admins'],
+                datasets: [{
+                    data: {{ user_distribution|safe }},
+                    backgroundColor: ['#00f2fe', '#7c3aed', '#10b981'],
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}
+{% endblock %}
+

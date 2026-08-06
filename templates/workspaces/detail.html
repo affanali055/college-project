@@ -78,6 +78,61 @@
                 <p style="color: var(--text-secondary);">No active workspace configurations registered.</p>
             {% endfor %}
         </div>
+
+        <!-- Reviews & Testimonials -->
+        <div class="glass-panel detail-section" style="padding: 30px; margin-top: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Reviews & Testimonials</h2>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="rating-average-badge"><i class="fa-solid fa-star rating-star-filled"></i> {{ space.get_average_rating }} / 5</span>
+                    <span style="font-size: 13px; color: var(--text-secondary);">({{ reviews.count }} review{{ reviews.count|pluralize }})</span>
+                </div>
+            </div>
+
+            {% if can_review %}
+                <div class="glass-panel" style="padding: 20px; background: rgba(255, 255, 255, 0.02); margin-bottom: 25px; border: 1px dashed rgba(0, 242, 254, 0.25);">
+                    <h4 style="margin-bottom: 12px; font-weight: 600;"><i class="fa-solid fa-pen-to-square" style="color: var(--accent-primary);"></i> Write a Review</h4>
+                    <form method="POST" action="{% url 'submit_review' space.id %}">
+                        {% csrf_token %}
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 8px;">Rating</label>
+                            <input type="hidden" name="rating" id="review_rating_val" value="5" required>
+                            <div class="interactive-stars-row" style="display: flex; gap: 8px; font-size: 24px; cursor: pointer; color: #fbbf24;">
+                                <i class="fa-solid fa-star rating-star-filled star-select" data-value="1" style="transition: transform 0.2s ease;"></i>
+                                <i class="fa-solid fa-star rating-star-filled star-select" data-value="2" style="transition: transform 0.2s ease;"></i>
+                                <i class="fa-solid fa-star rating-star-filled star-select" data-value="3" style="transition: transform 0.2s ease;"></i>
+                                <i class="fa-solid fa-star rating-star-filled star-select" data-value="4" style="transition: transform 0.2s ease;"></i>
+                                <i class="fa-solid fa-star rating-star-filled star-select" data-value="5" style="transition: transform 0.2s ease;"></i>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label for="review_comment">Your Review</label>
+                            <textarea name="comment" id="review_comment" rows="3" class="form-control" placeholder="Share your experience working at this space..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Submit Review</button>
+                    </form>
+                </div>
+            {% endif %}
+
+            <div class="reviews-list">
+                {% for review in reviews %}
+                    <div class="review-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong style="color: var(--accent-primary);"><i class="fa-solid fa-circle-user"></i> {{ review.user.username }}</strong>
+                            <span style="font-size: 11px; color: var(--text-secondary);">{{ review.created_at|date:"M d, Y" }}</span>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            {% for i in "12345" %}
+                                <i class="fa-solid fa-star {% if forloop.counter <= review.rating %}rating-star-filled{% else %}rating-star-empty{% endif %}"></i>
+                            {% endfor %}
+                        </div>
+                        <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.5;">{{ review.comment }}</p>
+                    </div>
+                {% empty %}
+                    <p style="color: var(--text-secondary); text-align: center; padding: 20px 0; font-style: italic;">No reviews written for this space yet.</p>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
     <!-- Right Booking widgets -->
@@ -95,19 +150,49 @@
                             <label for="unit_select">Select Workspace Unit</label>
                             <select name="unit_id" id="unit_select" required>
                                 {% for unit in units %}
-                                    <option value="{{ unit.id }}">{{ unit.name }} - ${{ unit.price_per_day }}/day</option>
+                                    <option value="{{ unit.id }}" data-price="{{ unit.price_per_day }}">{{ unit.name }} - ${{ unit.price_per_day }}/day</option>
                                 {% endfor %}
                             </select>
                         </div>
 
                         <div class="form-group">
                             <label for="start_date">Start Date</label>
-                            <input type="date" name="start_date" id="start_date" class="form-control" required min="{{ today|date:'Y-m-d' }}">
+                            <input type="text" name="start_date" id="start_date" class="form-control" placeholder="Select Start Date" required>
                         </div>
 
                         <div class="form-group">
                             <label for="end_date">End Date</label>
-                            <input type="date" name="end_date" id="end_date" class="form-control" required min="{{ today|date:'Y-m-d' }}">
+                            <input type="text" name="end_date" id="end_date" class="form-control" placeholder="Select End Date" required>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label for="promo_code_input">Promo Code</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="promo_code_input" name="promo_code" class="form-control" placeholder="e.g. COWORK10" style="flex-grow: 1; text-transform: uppercase;">
+                                <button type="button" id="applyPromoBtn" class="btn btn-secondary" style="padding: 10px 15px; border-radius: 8px;">Apply</button>
+                            </div>
+                            <span id="promoMessage" style="font-size: 11px; display: block; margin-top: 4px;"></span>
+                        </div>
+
+                        <!-- Price calculation summary widget -->
+                        <div class="price-calc-summary" id="priceSummaryBox">
+                            <div class="price-calc-row">
+                                <span>Daily Rate:</span>
+                                <strong id="summaryDailyRate">$0.00</strong>
+                            </div>
+                            <div class="price-calc-row">
+                                <span>Duration:</span>
+                                <strong id="summaryDuration">0 days</strong>
+                            </div>
+                            <div class="price-calc-row" id="discountRow" style="display: none; color: var(--success);">
+                                <span>Discount:</span>
+                                <strong id="summaryDiscount">-$0.00</strong>
+                            </div>
+                            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 8px 0;">
+                            <div class="price-calc-row" style="font-size: 15px; font-weight: 700; color: var(--accent-primary);">
+                                <span>Estimated Total:</span>
+                                <strong id="summaryTotal">$0.00</strong>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
@@ -165,23 +250,188 @@
 
 {% block extra_scripts %}
 <script>
-    // Autofill dates
     document.addEventListener("DOMContentLoaded", function() {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const start = document.getElementById("start_date");
-        const end = document.getElementById("end_date");
-        if (start && end) {
-            start.min = todayStr;
-            start.value = todayStr;
-            end.min = todayStr;
-            end.value = todayStr;
+        const unitSelect = document.getElementById("unit_select");
+        const startDateInput = document.getElementById("start_date");
+        const endDateInput = document.getElementById("end_date");
+        const applyPromoBtn = document.getElementById("applyPromoBtn");
+        const promoInput = document.getElementById("promo_code_input");
+        const promoMessage = document.getElementById("promoMessage");
+        
+        const summaryBox = document.getElementById("priceSummaryBox");
+        const summaryDailyRate = document.getElementById("summaryDailyRate");
+        const summaryDuration = document.getElementById("summaryDuration");
+        const summaryDiscount = document.getElementById("summaryDiscount");
+        const discountRow = document.getElementById("discountRow");
+        const summaryTotal = document.getElementById("summaryTotal");
+
+        let flatpickrStart = null;
+        let flatpickrEnd = null;
+        let discountPercent = 0;
+        let bookedDatesList = [];
+
+        // Dynamic price configurations
+        const unitPrices = {
+            {% for unit in units %}
+                "{{ unit.id }}": {{ unit.price_per_day }},
+            {% endfor %}
+        };
+
+        function calculatePrice() {
+            if (!unitSelect) return;
+            const unitId = unitSelect.value;
+            const dailyPrice = parseFloat(unitPrices[unitId] || 0);
             
-            start.addEventListener("change", function() {
-                end.min = start.value;
-                if (end.value < start.value) {
-                    end.value = start.value;
+            summaryDailyRate.textContent = `$${dailyPrice.toFixed(2)}`;
+            
+            const startVal = startDateInput.value;
+            const endVal = endDateInput.value;
+            
+            if (startVal && endVal) {
+                const d1 = new Date(startVal);
+                const d2 = new Date(endVal);
+                const diffTime = Math.abs(d2 - d1);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
+                
+                summaryDuration.textContent = `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+                
+                const baseTotal = dailyPrice * diffDays;
+                let finalTotal = baseTotal;
+                
+                if (discountPercent > 0) {
+                    const discountAmt = (baseTotal * discountPercent) / 100;
+                    finalTotal = baseTotal - discountAmt;
+                    summaryDiscount.textContent = `-$${discountAmt.toFixed(2)} (${discountPercent}% Off)`;
+                    discountRow.style.display = "flex";
+                } else {
+                    discountRow.style.display = "none";
+                }
+                
+                summaryTotal.textContent = `$${finalTotal.toFixed(2)}`;
+                summaryBox.style.display = "block";
+            } else {
+                summaryBox.style.display = "none";
+            }
+        }
+
+        function initCalendars(disabledRanges = []) {
+            const today = new Date().toISOString().split('T')[0];
+
+            if (flatpickrStart) flatpickrStart.destroy();
+            if (flatpickrEnd) flatpickrEnd.destroy();
+
+            flatpickrStart = flatpickr(startDateInput, {
+                minDate: "today",
+                dateFormat: "Y-m-d",
+                disable: disabledRanges,
+                onChange: function(selectedDates, dateStr) {
+                    flatpickrEnd.set("minDate", dateStr || "today");
+                    calculatePrice();
                 }
             });
+
+            flatpickrEnd = flatpickr(endDateInput, {
+                minDate: "today",
+                dateFormat: "Y-m-d",
+                disable: disabledRanges,
+                onChange: function() {
+                    calculatePrice();
+                }
+            });
+            
+            calculatePrice();
+        }
+
+        function loadBookedDates() {
+            if (!unitSelect) return;
+            const unitId = unitSelect.value;
+            if (!unitId) return;
+
+            fetch(`/bookings/api/booked-dates/${unitId}/`)
+                .then(res => res.json())
+                .then(data => {
+                    const ranges = data.booked_dates.map(range => ({
+                        from: range.start,
+                        to: range.end
+                    }));
+                    initCalendars(ranges);
+                })
+                .catch(err => {
+                    console.error("Error loading booked dates:", err);
+                    initCalendars([]);
+                });
+        }
+
+        // Apply promo code live
+        if (applyPromoBtn) {
+            applyPromoBtn.addEventListener("click", function() {
+                const code = promoInput.value.trim().toUpperCase();
+                if (!code) {
+                    promoMessage.textContent = "Please enter a code.";
+                    promoMessage.style.color = "var(--danger)";
+                    return;
+                }
+
+                fetch(`/bookings/api/validate-promo/?code=${code}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.valid) {
+                            discountPercent = data.discount_percent;
+                            promoMessage.textContent = `Promo code applied successfully: ${discountPercent}% Off!`;
+                            promoMessage.style.color = "var(--success)";
+                            calculatePrice();
+                        } else {
+                            discountPercent = 0;
+                            promoMessage.textContent = data.message || "Invalid code.";
+                            promoMessage.style.color = "var(--danger)";
+                            calculatePrice();
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Error validating promo:", err);
+                        promoMessage.textContent = "Error validating promo code.";
+                        promoMessage.style.color = "var(--danger)";
+                    });
+            });
+        }
+
+        // Interactive star selection logic
+        const stars = document.querySelectorAll(".star-select");
+        const ratingInput = document.getElementById("review_rating_val");
+        if (stars.length > 0 && ratingInput) {
+            stars.forEach(star => {
+                star.addEventListener("click", function() {
+                    const score = parseInt(this.getAttribute("data-value"));
+                    ratingInput.value = score;
+                    stars.forEach((s, idx) => {
+                        if (idx < score) {
+                            s.classList.remove("rating-star-empty", "fa-regular");
+                            s.classList.add("rating-star-filled", "fa-solid");
+                        } else {
+                            s.classList.remove("rating-star-filled", "fa-solid");
+                            s.classList.add("rating-star-empty", "fa-regular");
+                        }
+                    });
+                });
+                star.addEventListener("mouseover", function() {
+                    const score = parseInt(this.getAttribute("data-value"));
+                    stars.forEach((s, idx) => {
+                        if (idx < score) {
+                            s.style.transform = "scale(1.2)";
+                        }
+                    });
+                });
+                star.addEventListener("mouseout", function() {
+                    stars.forEach(s => {
+                        s.style.transform = "none";
+                    });
+                });
+            });
+        }
+
+        if (unitSelect) {
+            unitSelect.addEventListener("change", loadBookedDates);
+            loadBookedDates(); // load for first unit initial
         }
     });
 </script>

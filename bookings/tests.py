@@ -99,3 +99,39 @@ class CoWorkPlatformTests(TestCase):
         # Search spaces for capacity 10 - no spaces should match (since max capacity is 6)
         response = self.client.get(reverse('space_list'), {'capacity': '10'})
         self.assertNotContains(response, "Test Space Studio")
+
+    def test_promo_code_validation_endpoint(self):
+        """Test the promo code API validation endpoint"""
+        from bookings.models import PromoCode
+        promo = PromoCode.objects.create(code="TESTPROMO", discount_percent=15, is_active=True)
+        
+        # Test valid promo code
+        response = self.client.get(reverse('api_validate_promo'), {'code': 'TESTPROMO'})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['valid'])
+        self.assertEqual(response.json()['discount_percent'], 15)
+        
+        # Test invalid promo code
+        response = self.client.get(reverse('api_validate_promo'), {'code': 'FAKEPROMO'})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()['valid'])
+
+    def test_booked_dates_endpoint(self):
+        """Test the booked dates API endpoint"""
+        today = datetime.today().date()
+        tomorrow = today + timedelta(days=1)
+        
+        Booking.objects.create(
+            user=self.client_user,
+            unit=self.desk,
+            start_date=today,
+            end_date=tomorrow,
+            total_price=40.00,
+            status='APPROVED'
+        )
+        
+        response = self.client.get(reverse('api_booked_dates', args=[self.desk.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()['booked_dates']), 1)
+        self.assertEqual(response.json()['booked_dates'][0]['start'], today.strftime('%Y-%m-%d'))
+

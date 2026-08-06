@@ -8,10 +8,33 @@
     
     <!-- Google Font & Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+
+    <!-- Toast Notifications Container -->
+    {% if messages %}
+        <div class="toast-container" id="toastContainer">
+            {% for message in messages %}
+                <div class="toast toast-{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}" role="alert">
+                    <div class="toast-content">
+                        {% if message.tags == 'success' %}
+                            <i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 16px;"></i>
+                        {% else %}
+                            <i class="fa-solid fa-circle-exclamation" style="color: var(--danger); font-size: 16px;"></i>
+                        {% endif %}
+                        <span>{{ message }}</span>
+                    </div>
+                    <button class="toast-close" onclick="closeToast(this)">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 
     <header>
         <div class="container navbar">
@@ -23,6 +46,7 @@
                 <ul class="nav-links">
                     <li><a href="{% url 'space_list' %}" class="{% if request.resolver_match.url_name == 'space_list' %}active{% endif %}">Discover</a></li>
                     {% if user.is_authenticated %}
+
                         <li>
                             <a href="{% url 'dashboard_home' %}" class="{% if 'dashboard' in request.resolver_match.url_name %}active{% endif %}">
                                 Dashboard ({% if user.role == 'OWNER' %}Owner{% elif user.role == 'ADMIN' %}Admin{% else %}Client{% endif %})
@@ -40,21 +64,6 @@
     </header>
 
     <main class="container">
-        {% if messages %}
-            <ul class="messages">
-                {% for message in messages %}
-                    <li class="alert alert-{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
-                        {% if message.tags == 'success' %}
-                            <i class="fa-solid fa-circle-check"></i>
-                        {% else %}
-                            <i class="fa-solid fa-circle-exclamation"></i>
-                        {% endif %}
-                        {{ message }}
-                    </li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-
         {% block content %}{% endblock %}
     </main>
 
@@ -64,6 +73,34 @@
         </div>
     </footer>
 
+    <script>
+        function closeToast(button) {
+            const toast = button.closest('.toast');
+            if (toast) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto dismiss toast messages
+            const toasts = document.querySelectorAll('.toast');
+            toasts.forEach(toast => {
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 5000);
+            });
+
+
+        });
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

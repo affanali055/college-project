@@ -37,6 +37,22 @@
             </p>
         </div>
 
+        <!-- Charts Grid Row -->
+        <div class="chart-grid">
+            <div class="glass-panel" style="padding: 24px; margin-bottom: 25px;">
+                <h3 style="margin-bottom: 15px; font-size: 16px;"><i class="fa-solid fa-chart-line" style="color: var(--accent-primary);"></i> Revenue per Workspace</h3>
+                <div style="position: relative; height: 200px; width: 100%;">
+                    <canvas id="ownerRevChart"></canvas>
+                </div>
+            </div>
+            <div class="glass-panel" style="padding: 24px; margin-bottom: 25px;">
+                <h3 style="margin-bottom: 15px; font-size: 16px;"><i class="fa-solid fa-chart-bar" style="color: #60a5fa;"></i> Desk/Cabin Bookings Count</h3>
+                <div style="position: relative; height: 200px; width: 100%;">
+                    <canvas id="ownerOccupancyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Add Property forms -->
         <div id="spaces" class="glass-panel" style="padding: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 20px;">
@@ -320,5 +336,70 @@
     function closeUnitModal() {
         document.getElementById("addUnitBox").style.display = "none";
     }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Space Revenue Chart (Bar Chart)
+        const ctxRev = document.getElementById('ownerRevChart').getContext('2d');
+        const revGrad = ctxRev.createLinearGradient(0, 0, 0, 200);
+        revGrad.addColorStop(0, 'rgba(0, 242, 254, 0.4)');
+        revGrad.addColorStop(1, 'rgba(0, 242, 254, 0.05)');
+
+        new Chart(ctxRev, {
+            type: 'bar',
+            data: {
+                labels: {{ space_labels|safe }},
+                datasets: [{
+                    label: 'Revenue ($)',
+                    data: {{ space_revenue_data|safe }},
+                    backgroundColor: revGrad,
+                    borderColor: '#00f2fe',
+                    borderWidth: 1.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                }
+            }
+        });
+
+        // Occupancy / Bookings Count per Unit (Horizontal Bar Chart)
+        const ctxOcc = document.getElementById('ownerOccupancyChart').getContext('2d');
+        const occGrad = ctxOcc.createLinearGradient(0, 0, 300, 0); // horizontal gradient
+        occGrad.addColorStop(0, 'rgba(124, 58, 237, 0.4)');
+        occGrad.addColorStop(1, 'rgba(124, 58, 237, 0.05)');
+
+        new Chart(ctxOcc, {
+            type: 'bar',
+            data: {
+                labels: {{ unit_labels|safe }},
+                datasets: [{
+                    label: 'Approved Bookings',
+                    data: {{ unit_bookings_data|safe }},
+                    backgroundColor: occGrad,
+                    borderColor: '#7c3aed',
+                    borderWidth: 1.5
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                }
+            }
+        });
+    });
 </script>
 {% endblock %}
