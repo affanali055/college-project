@@ -20,16 +20,17 @@ DEBUG = True
 
 
 ALLOWED_HOSTS = [
-    "college-project-1-w6st.onrender.com",
+    
+    "college-project-3-qomr.onrender.com",
     "localhost",
     "127.0.0.1",
 ]
 
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://college-project-1-w6st.onrender.com",
-]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://college-project-3-qomr.onrender.com",
+]
 
 # Application definition
 
